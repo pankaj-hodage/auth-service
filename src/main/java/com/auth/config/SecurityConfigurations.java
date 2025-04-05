@@ -41,7 +41,7 @@ public class SecurityConfigurations {
 	SecurityFilterChain signInSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
 		return httpSecurity
 				.authorizeHttpRequests(auth -> auth.requestMatchers("/v1/user/test").hasRole("ADMIN")
-						.requestMatchers("/v1/user/sign-up").permitAll().requestMatchers("/v1/user/sign-in").permitAll()
+						.requestMatchers("/v1/user/sign-up","/v1/user/sign-in","/swagger*/**","/v*/api-docs*/**").permitAll()
 						.anyRequest().authenticated())
 				.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
