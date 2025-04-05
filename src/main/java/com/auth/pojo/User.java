@@ -17,10 +17,12 @@ import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
 @Builder
+@ToString
 @Entity
 @Table(name = "USER_AUTH_INFO")
 public class User {

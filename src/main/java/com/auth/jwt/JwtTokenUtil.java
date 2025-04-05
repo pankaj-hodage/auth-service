@@ -3,15 +3,19 @@ package com.auth.jwt;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.auth.config.user.CustomUserDetails;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class JwtTokenUtil {
 
 	@Value("${SECRET_KEY}")
@@ -39,8 +43,9 @@ public class JwtTokenUtil {
 			Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
 			return true;
 		} catch (Exception e) {
-			System.out.println(e);
+			log.error("[JwtTokenUtil:validateJwtToken] Exception due to :{}", e.getMessage());
+			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, e.getMessage());
+
 		}
-		return false;
 	}
 }

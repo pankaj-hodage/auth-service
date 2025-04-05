@@ -15,8 +15,10 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
+@Slf4j
 public class JwtTokenFilter extends OncePerRequestFilter {
 
 	@Autowired
@@ -30,6 +32,10 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 			throws ServletException, IOException {
 
 		final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+
+		log.debug("[JwtTokenFilter:doFilterInternal] :: Started ");
+
+		log.debug("[JwtTokenFilter:doFilterInternal]Filtering the Http Request:{}", request.getRequestURI());
 
 		if (authHeader != null && authHeader.startsWith("Bearer")) {
 
@@ -47,8 +53,12 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 					SecurityContextHolder.getContext().setAuthentication(authenticationDetails);
 
 				}
-			}
-		}
+				log.debug("[JwtTokenFilter:doFilterInternal] Completed Successfully");
+			} else
+				log.error("[JwtTokenFilter:doFilterInternal] Invalid JWT token.");
+		} else
+			log.error("[JwtTokenFilter:doFilterInternal] Bearer token not found in the request: {}",
+					request.getRequestURI());
 		filterChain.doFilter(request, response);
 	}
 }

@@ -12,9 +12,11 @@ import com.auth.repository.RoleRepository;
 import com.auth.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Transactional
+@Slf4j
 public class UserServiceImpl implements UserService {
 
 	@Autowired
@@ -34,6 +36,7 @@ public class UserServiceImpl implements UserService {
 				.roles(roleRepository.findByRoleNameIn(user.getRoles())).build();
 
 		userRepository.save(newUser);
+		log.debug("[UserServiceImpl:createUser] user added : {}", newUser.toString());
 		return true;
 	}
 
