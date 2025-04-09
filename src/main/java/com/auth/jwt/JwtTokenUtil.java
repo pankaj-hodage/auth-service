@@ -1,51 +1,54 @@
 package com.auth.jwt;
 
-import java.util.Date;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
-import com.auth.config.user.CustomUserDetails;
-
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
 public class JwtTokenUtil {
 
-	@Value("${SECRET_KEY}")
-	private String jwtSecret;
-
 	@Value("${EXP_TIMEOUT}")
 	private int jwtExpiration;
 
+	@Autowired
+	JwtEncoder jwtEncoder;
+
 	public String generateAccessToken(Authentication authentication) {
 
-		CustomUserDetails userPrincipal = (CustomUserDetails) authentication.getPrincipal();
+		log.info("[JwtTokenUtil:generateAccessToken] Token Creation Started for:{}", authentication.getName());
 
-		return Jwts.builder().setSubject((userPrincipal.getUsername())).setIssuedAt(new Date())
-				.setExpiration(new Date(new Date().getTime() + jwtExpiration))
-				.signWith(SignatureAlgorithm.HS512, jwtSecret).compact();
+		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server").issuedAt(Instant.now())
+				.expiresAt(Instant.now().plus(jwtExpiration, ChronoUnit.MINUTES)).subject(authentication.getName())
+				.build();
 
+		return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
 	}
 
-	public String getUserName(String token) {
-		return Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token).getBody().getSubject();
+	public boolean validateJwtToken(Jwt jwtToken, UserDetails userDetails) {
+		final String userName = getUserName(jwtToken);
+		boolean isTokenExpired = getIfTokenIsExpired(jwtToken);
+		boolean isTokenUserSameAsDatabase = userName.equals(userDetails.getUsername());
+		return !isTokenExpired && isTokenUserSameAsDatabase;
 	}
 
-	public boolean validateJwtToken(String authToken) {
-		try {
-			Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(authToken);
-			return true;
-		} catch (Exception e) {
-			log.error("[JwtTokenUtil:validateJwtToken] Exception due to :{}", e.getMessage());
-			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, e.getMessage());
+	public String getUserName(Jwt jwtToken) {
+		return jwtToken.getSubject();
+	}
 
-		}
+	private boolean getIfTokenIsExpired(Jwt jwtToken) {
+		return Objects.requireNonNull(jwtToken.getExpiresAt()).isBefore(Instant.now());
 	}
 }

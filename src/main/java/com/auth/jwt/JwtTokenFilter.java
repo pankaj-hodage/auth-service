@@ -4,12 +4,17 @@ import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,38 +32,47 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 	@Autowired
 	UserDetailsService userDetailsService;
 
+	@Autowired
+	private JwtDecoder jwtDecoder;
+
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 
-		final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+		try {
+			final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-		log.debug("[JwtTokenFilter:doFilterInternal] :: Started ");
+			log.debug("[JwtTokenFilter:doFilterInternal] :: Started ");
 
-		log.debug("[JwtTokenFilter:doFilterInternal]Filtering the Http Request:{}", request.getRequestURI());
+			log.debug("[JwtTokenFilter:doFilterInternal]Filtering the Http Request:{}", request.getRequestURI());
 
-		if (authHeader != null && authHeader.startsWith("Bearer")) {
+			if (authHeader != null && authHeader.startsWith(TokenType.BEARER.getValue())) {
 
-			final String token = authHeader.substring(7);
-			if (jwtTokenUtil.validateJwtToken(token)) {
-				String userName = jwtTokenUtil.getUserName(token);
+				final String token = authHeader.substring(7);
+				final Jwt jwtToken = jwtDecoder.decode(token);
+				final String userName = jwtTokenUtil.getUserName(jwtToken);
 
 				if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
 					UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
+					if (jwtTokenUtil.validateJwtToken(jwtToken, userDetails)) {
+						UsernamePasswordAuthenticationToken authenticationDetails = new UsernamePasswordAuthenticationToken(
+								userDetails.getUsername(), userDetails.getPassword(), userDetails.getAuthorities());
 
-					UsernamePasswordAuthenticationToken authenticationDetails = new UsernamePasswordAuthenticationToken(
-							userDetails.getUsername(), userDetails.getPassword(), userDetails.getAuthorities());
+						SecurityContextHolder.getContext().setAuthentication(authenticationDetails);
+					} else
+						log.error("[JwtTokenFilter:doFilterInternal] Invalid JWT token.");
 
-					SecurityContextHolder.getContext().setAuthentication(authenticationDetails);
+					log.debug("[JwtTokenFilter:doFilterInternal] Completed Successfully");
 
 				}
-				log.debug("[JwtTokenFilter:doFilterInternal] Completed Successfully");
-			} else
-				log.error("[JwtTokenFilter:doFilterInternal] Invalid JWT token.");
-		} else
-			log.error("[JwtTokenFilter:doFilterInternal] Bearer token not found in the request: {}",
-					request.getRequestURI());
+
+			}
+		} catch (Exception jwtException) {
+			log.error("[JwtTokenFilter:doFilterInternal] Exception due to :{}", jwtException.getMessage());
+			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, jwtException.getMessage());
+		}
+
 		filterChain.doFilter(request, response);
 	}
 }
