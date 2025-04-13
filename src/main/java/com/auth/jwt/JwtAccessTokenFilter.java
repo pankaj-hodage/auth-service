@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
-public class JwtTokenFilter extends OncePerRequestFilter {
+public class JwtAccessTokenFilter extends OncePerRequestFilter {
 
 	@Autowired
 	JwtTokenUtil jwtTokenUtil;
@@ -42,9 +42,9 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 		try {
 			final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-			log.debug("[JwtTokenFilter:doFilterInternal] :: Started ");
+			log.debug("[JwtAccessTokenFilter:doFilterInternal] :: Started ");
 
-			log.debug("[JwtTokenFilter:doFilterInternal]Filtering the Http Request:{}", request.getRequestURI());
+			log.debug("[JwtAccessTokenFilter:doFilterInternal]Filtering the Http Request:{}", request.getRequestURI());
 
 			if (authHeader != null && authHeader.startsWith(TokenType.BEARER.getValue())) {
 
@@ -61,18 +61,23 @@ public class JwtTokenFilter extends OncePerRequestFilter {
 
 						SecurityContextHolder.getContext().setAuthentication(authenticationDetails);
 					} else
-						log.error("[JwtTokenFilter:doFilterInternal] Invalid JWT token.");
+						log.error("[JwtAccessTokenFilter:doFilterInternal] Invalid JWT token.");
 
-					log.debug("[JwtTokenFilter:doFilterInternal] Completed Successfully");
+					log.debug("[JwtAccessTokenFilter:doFilterInternal] Completed Successfully");
 
 				}
 
 			}
 		} catch (Exception jwtException) {
-			log.error("[JwtTokenFilter:doFilterInternal] Exception due to :{}", jwtException.getMessage());
+			log.error("[JwtAccessTokenFilter:doFilterInternal] Exception due to :{}", jwtException.getMessage());
 			throw new ResponseStatusException(HttpStatus.NOT_ACCEPTABLE, jwtException.getMessage());
 		}
 
 		filterChain.doFilter(request, response);
+	}
+
+	@Override
+	protected boolean shouldNotFilter(HttpServletRequest request) {
+		return request.getServletPath().equals("/user/v1/refresh-token");
 	}
 }

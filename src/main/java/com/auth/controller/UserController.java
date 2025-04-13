@@ -24,9 +24,11 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
-@RequestMapping("/v1/user")
+@RequestMapping("/user/v1")
 public class UserController {
 
 	@Autowired
@@ -54,17 +56,22 @@ public class UserController {
 	}
 
 	@PostMapping("/sign-in")
-	public ResponseEntity<?> signIn(@RequestBody AuthRequestDTO user) {
+	public ResponseEntity<?> signIn(@RequestBody AuthRequestDTO user, HttpServletResponse response) {
 
 		try {
 			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(user.getEmailId(),
 					user.getPassword());
 			Authentication authenticatedDetails = authManager.authenticate(authToken);
-			return ResponseEntity.ok().body(jwtUtil.generateAccessToken(authenticatedDetails));
+			return ResponseEntity.ok().body(jwtUtil.getJwtTokens(authenticatedDetails, response));
 		} catch (BadCredentialsException e) {
 
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
 		}
+	}
+	
+	@GetMapping("/refresh-token")
+	public ResponseEntity<?> getAccessTokenFromRefreshToken(HttpServletRequest request) {
+		return ResponseEntity.ok(jwtUtil.getAccessTokenFromRefreshToken(request));
 	}
 
 	@GetMapping("/test")

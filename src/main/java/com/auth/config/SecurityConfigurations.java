@@ -15,7 +15,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import com.auth.jwt.JwtTokenFilter;
+import com.auth.jwt.JwtAccessTokenFilter;
+import com.auth.jwt.JwtRefreshTokenFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -25,7 +26,10 @@ import jakarta.servlet.http.HttpServletResponse;
 public class SecurityConfigurations {
 
 	@Autowired
-	private JwtTokenFilter jwtTokenFilter;
+	private JwtAccessTokenFilter jwtAccessTokenFilter;
+	
+	@Autowired
+	private JwtRefreshTokenFilter jwtRefreshTokenFilter;
 
 	@Bean
 	PasswordEncoder passwordEncoder() {
@@ -35,15 +39,18 @@ public class SecurityConfigurations {
 	@Bean
 	SecurityFilterChain signInSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
 		return httpSecurity
-				.authorizeHttpRequests(auth -> auth.requestMatchers("/v1/user/test").hasRole("ADMIN")
-						.requestMatchers("/v1/user/sign-up", "/v1/user/sign-in", "/swagger*/**", "/v*/api-docs*/**")
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/user/v1/test").hasRole("ADMIN")
+						.requestMatchers("/user/v1/sign-up", "/user/v1/sign-in", "/swagger*/**", "/v*/api-docs*/**",
+								"/user/v1/refresh-token", "/error")
 						.permitAll().anyRequest().authenticated())
 				.csrf(AbstractHttpConfigurer::disable)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.exceptionHandling(ex -> {
 					ex.authenticationEntryPoint((request, response, authException) -> response
 							.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getMessage()));
-				}).addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class).build();
+				}).addFilterBefore(jwtAccessTokenFilter, UsernamePasswordAuthenticationFilter.class)
+				.addFilterBefore(jwtRefreshTokenFilter, UsernamePasswordAuthenticationFilter.class)
+				.build();
 	}
 
 	@Bean
