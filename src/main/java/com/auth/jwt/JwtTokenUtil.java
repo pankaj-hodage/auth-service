@@ -94,7 +94,7 @@ public class JwtTokenUtil {
 
 	public String generateAccessToken(String userId) {
 
-		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server").issuedAt(Instant.now())
+		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server").claim("type", "ACCESS_TOKEN").issuedAt(Instant.now())
 				.expiresAt(Instant.now().plus(accessTokenExpiration, ChronoUnit.MINUTES)).subject(userId).build();
 
 		return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
@@ -116,7 +116,10 @@ public class JwtTokenUtil {
 	}
 	
 	public String generateRefreshToken(String userId) {
-		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server").issuedAt(Instant.now())
+		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server")
+				.claim("type", "REFRESH_TOKEN")
+				.claim("scope", "REFRESH_TOKEN_API")
+				.issuedAt(Instant.now())
 				.expiresAt(Instant.now().plus(refreshTokenExpiration, ChronoUnit.DAYS))
 				.subject(userId).build();
 

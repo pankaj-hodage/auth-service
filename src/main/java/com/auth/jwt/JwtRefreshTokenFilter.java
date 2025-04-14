@@ -57,7 +57,8 @@ public class JwtRefreshTokenFilter extends OncePerRequestFilter {
 				final Jwt jwtToken = jwtDecoder.decode(token);
 				final String userName = jwtTokenUtil.getUserName(jwtToken);
 
-				if (userName != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				if ("REFRESH_TOKEN".equals(jwtToken.getClaimAsString("type")) && userName != null
+						&& SecurityContextHolder.getContext().getAuthentication() == null) {
 
 					boolean isRefreshTokenValidInDatabase = refreshTokenRepository
 							.findByRefreshToken(jwtToken.getTokenValue())
