@@ -63,13 +63,13 @@ public class UserController {
 			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(user.getEmailId(),
 					user.getPassword());
 			Authentication authenticatedDetails = authManager.authenticate(authToken);
-			return ResponseEntity.ok().body(jwtUtil.getJwtTokens(authenticatedDetails, response));
+			return ResponseEntity.ok().body(jwtUtil.getJwtTokens(user.getEmailId(), response));
 		} catch (BadCredentialsException e) {
 
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
 		}
 	}
-	
+
 	@GetMapping("/refresh-token")
 	@PreAuthorize("hasAuthority('SCOPE_REFRESH_TOKEN_API')")
 	public ResponseEntity<?> getAccessTokenFromRefreshToken(HttpServletRequest request) {

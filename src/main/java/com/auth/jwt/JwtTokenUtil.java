@@ -3,13 +3,15 @@ package com.auth.jwt;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.oauth2.core.OAuth2AccessToken.TokenType;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -21,10 +23,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.auth.dto.AuthResponseDTO;
+import com.auth.dto.UserDTO;
 import com.auth.pojo.RefreshToken;
+import com.auth.pojo.RoleType;
 import com.auth.pojo.User;
 import com.auth.repository.RefreshTokenRepository;
 import com.auth.repository.UserRepository;
+import com.auth.service.UserService;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -37,35 +42,37 @@ public class JwtTokenUtil {
 
 	@Value("${ACC_TKN_TIMEOUT}")
 	private int accessTokenExpiration;
-	
+
 	@Value("${REF_TKN_TIMEOUT}")
 	private int refreshTokenExpiration;
 
 	@Autowired
 	JwtEncoder jwtEncoder;
-	
+
 	@Autowired
 	private JwtDecoder jwtDecoder;
-	
+
 	@Autowired
 	RefreshTokenRepository refreshTokenRepository;
-	
+
 	@Autowired
 	UserRepository userRepository;
-	
-	public AuthResponseDTO getJwtTokens(Authentication authentication, HttpServletResponse response) {
+
+	@Autowired
+	private UserService userService;
+
+	public AuthResponseDTO getJwtTokens(String mailId, HttpServletResponse response) {
 		try {
-			log.info("[JwtTokenUtil:getJwtTokens] Token Creation Started for:{}", authentication.getName());
+			log.info("[JwtTokenUtil:getJwtTokens] Token Creation Started for:{}", mailId);
 
-			final String accessToken = generateAccessToken(authentication.getName());
-			final String refreshToken = generateRefreshToken(authentication.getName());
+			final String accessToken = generateAccessToken(mailId);
+			final String refreshToken = generateRefreshToken(mailId);
 
-			saveRefreshToken(refreshToken, authentication.getName());
+			saveRefreshToken(refreshToken, mailId);
 			setRefreshTokenInCookies(response, refreshToken);
 
 			AuthResponseDTO authresponse = AuthResponseDTO.builder().accessToken(accessToken)
-					.accessTokenExpiry(LocalDateTime.now().plusMinutes(accessTokenExpiration))
-					.userName(authentication.getName()).build();
+					.accessTokenExpiry(LocalDateTime.now().plusMinutes(accessTokenExpiration)).userName(mailId).build();
 
 			return authresponse;
 
@@ -75,12 +82,12 @@ public class JwtTokenUtil {
 		}
 	}
 
-	private void setRefreshTokenInCookies(HttpServletResponse response,String refreshToken) {
+	private void setRefreshTokenInCookies(HttpServletResponse response, String refreshToken) {
 		Cookie cookie = new Cookie("refresh-token", refreshToken);
 		cookie.setHttpOnly(true);
 		cookie.setSecure(true);
-		cookie.setMaxAge(refreshTokenExpiration * 24 * 60 * 60 );
-        response.addCookie(cookie);		
+		cookie.setMaxAge(refreshTokenExpiration * 24 * 60 * 60);
+		response.addCookie(cookie);
 	}
 
 	private void saveRefreshToken(String refreshToken, String mail) throws Exception {
@@ -94,8 +101,9 @@ public class JwtTokenUtil {
 
 	public String generateAccessToken(String userId) {
 
-		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server").claim("type", "ACCESS_TOKEN").issuedAt(Instant.now())
-				.expiresAt(Instant.now().plus(accessTokenExpiration, ChronoUnit.MINUTES)).subject(userId).build();
+		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server").claim("type", "ACCESS_TOKEN")
+				.issuedAt(Instant.now()).expiresAt(Instant.now().plus(accessTokenExpiration, ChronoUnit.MINUTES))
+				.subject(userId).build();
 
 		return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
 	}
@@ -114,14 +122,11 @@ public class JwtTokenUtil {
 	private boolean getIfTokenIsExpired(Jwt jwtToken) {
 		return Objects.requireNonNull(jwtToken.getExpiresAt()).isBefore(Instant.now());
 	}
-	
+
 	public String generateRefreshToken(String userId) {
-		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server")
-				.claim("type", "REFRESH_TOKEN")
-				.claim("scope", "REFRESH_TOKEN_API")
-				.issuedAt(Instant.now())
-				.expiresAt(Instant.now().plus(refreshTokenExpiration, ChronoUnit.DAYS))
-				.subject(userId).build();
+		JwtClaimsSet claims = JwtClaimsSet.builder().issuer("auth-server").claim("type", "REFRESH_TOKEN")
+				.claim("scope", "REFRESH_TOKEN_API").issuedAt(Instant.now())
+				.expiresAt(Instant.now().plus(refreshTokenExpiration, ChronoUnit.DAYS)).subject(userId).build();
 
 		return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
 	}
@@ -150,5 +155,16 @@ public class JwtTokenUtil {
 		} else
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Refresh token not found in header.");
 		return new AuthResponseDTO();
+	}
+
+	public AuthResponseDTO generateTokensforOAuth2Clients(String mailId, HttpServletResponse response) {
+		if (!userService.isUserPresent(mailId)) {
+			Set<RoleType> userRoles = new HashSet<>();
+			userRoles.add(RoleType.ROLE_USER);
+			UserDTO newUser = UserDTO.builder().name(mailId).emailId(mailId).password(UUID.randomUUID().toString())
+					.roles(userRoles).build();
+			userService.createUser(newUser);
+		}
+		return getJwtTokens(mailId, response);
 	}
 }
