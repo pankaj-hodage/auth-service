@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,7 +49,7 @@ public class UserController {
 			@ApiResponse(responseCode = "200", description = "User already exists. Please try with different email.", content = @Content(mediaType = "text/plain", schema = @Schema(implementation = String.class), examples = {
 					@ExampleObject(name = "Success", value = "User already exists. Please try with different email.") })) })
 	@PostMapping("/sign-up")
-	public ResponseEntity<?> signUp(@RequestBody UserDTO user) {
+	public ResponseEntity<?> signUp(@Validated @RequestBody UserDTO user) {
 
 		if (userService.isUserPresent(user.getEmailId())) {
 			return ResponseEntity.status(HttpStatus.OK).body("User already exists. Please try with different email.");
@@ -57,7 +58,7 @@ public class UserController {
 	}
 
 	@PostMapping("/sign-in")
-	public ResponseEntity<?> signIn(@RequestBody AuthRequestDTO user, HttpServletResponse response) {
+	public ResponseEntity<?> signIn(@Validated @RequestBody AuthRequestDTO user, HttpServletResponse response) {
 
 		try {
 			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(user.getEmailId(),
@@ -76,6 +77,7 @@ public class UserController {
 		return ResponseEntity.ok(jwtUtil.getAccessTokenFromRefreshToken(request));
 	}
 
+	@PreAuthorize("hasAuthority('ROLE_ADMIN')")
 	@GetMapping("/test")
 	public String testAuthentication() {
 		return "Authentication working successfully";

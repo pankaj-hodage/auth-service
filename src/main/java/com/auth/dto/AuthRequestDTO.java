@@ -8,7 +8,6 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString
-
 public class AuthRequestDTO {
 
 	@NotBlank(message = "Email can't be blank or null")

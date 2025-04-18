@@ -3,6 +3,7 @@ package com.auth.pojo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -17,20 +18,20 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name="REFRESH_TOKEN")
+@Table(name = "REFRESH_TOKEN")
 public class RefreshToken {
 
-    @Id
-    @GeneratedValue
-    private Long id;
-    @Column(name = "REFRESH_TOKEN", nullable = false, length = 10000)
-    private String refreshToken;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
+	@Column(name = "REFRESH_TOKEN", nullable = false, length = 10000)
+	private String refreshToken;
 
-    @Column(name = "REVOKED")
-    private boolean revoked;
+	@Column(name = "REVOKED")
+	private boolean revoked;
 
-    @ManyToOne
-    @JoinColumn(name = "USER_ID",referencedColumnName = "USER_ID")
-    private User user;
+	@ManyToOne
+	@JoinColumn(name = "USER_ID", referencedColumnName = "USER_ID")
+	private User user;
 
 }
